@@ -6,20 +6,70 @@ var prompt = "prompt > ";
 
 // if you require a folder, it assumes you are looking for an index.js file
 
-var actions = {
-	"newPrompt": function () {
-    	process.stdout.write('\n' + prompt);
-	},
-	"pwd": function (files, done) {
-		process.stdout.write(__dirname + "");
-		//process.stdout.write(process.cwd() + "");
-		//process.stdout.write(process.mainModule.filename);
-		this.newPrompt();
-	},
-	"date": function (files, done) {
-		process.stdout.write(Date());
-		this.newPrompt();
-	},
+var print = function (txt, noline) {
+  process.stdout.write((noline ? "" :"\n") + (txt || prompt));
+};
+var pwd = function (files, done) {
+	var result = __dirname;
+	print(result);
+	done(result);
+};
+var date = function (files, done) {
+	var result = Date();
+	print(result);
+	done(result);
+};
+var echo = function (files, done) {
+	var result = files.join(" ");
+	print(result);
+	done(result);
+};
+var forEachFile = function (func, n) {
+	func = typeof func === "function" ? func : function (d) { return d;};
+	return function (files, done) {
+		var arr = 0;
+		n || (n = 10);
+		files.forEach(function(filezzz, i) {
+			fs.readFile(filezzz, "utf8", function (err, data) {
+				if (err) throw err;
+				files.length > 1 && print("\n\n==> " + files[i] + " <==\n\n", false);
+				var result = func(data, n);
+				print(result);
+				arr++;
+				if(arr === files.length) done(result);
+			});
+		});
+	};
+};
+var cat = forEachFile();
+var head = forEachFile(function (data, n) {
+	return data.split("\n").slice(0,n).join("\n");
+});
+var tail = forEachFile(function (data, n) {
+  return data.split("\n").slice(0 - n).join("\n");
+});
+var sort = forEachFile(function (data, n) {
+	return data.split("\n").sort().join("\n");
+});
+var wc = forEachFile(function (data) {
+	return data.split("\n").length - 1;
+});
+var uniq = forEachFile(function (data) {
+	var result = [];
+	var j = 0, newData = data.split("\n"),
+			length = newData.length - 1;
+	for(; j <= length; j++) {
+		if(newData[j - 1] !== newData[j]) {
+			result.push(newData[j]);
+		}
+	}
+	return result.join("\n");
+});
+
+module.exports = {
+	"newPrompt": print,
+	"pwd": pwd,
+	"date": date,
 	ls: function (files, done) {
 		fs.readdir(".", function (err, files) {
 			if(err) throw err;
@@ -31,118 +81,13 @@ var actions = {
 			done(result);
 		});
 	},
-	"echo": function (file) {
-		file.forEach(function (f) {
-			process.stdout.write(f + " ");
-		});
-        this.newPrompt();
-	},
-	"cat": function (files, done) {
-		var arr = 0;
-		files.forEach(function(filezzz, i) {
-			fs.readFile(filezzz, "utf8", function (err, data) {
-				if (err) {
-					throw err;
-				}
-				files.length > 1 && process.stdout.write("\n\n==> " + files[i] + " <==\n\n");
-				var result = data;
-				process.stdout.write("\n" + result);
-				arr++;
-				if(arr === files.length) done(result);
-			});
-		});
-
-	},
-	"head": function (files, done) {
-		var n = 10;
-		var arr = 0;
-		files.forEach(function(filezzz, i) {
-			fs.readFile(filezzz, "utf8", function (err, data) {
-				if (err) {
-					throw err;
-				}
-				files.length > 1 && process.stdout.write("\n\n==> " + files[i] + " <==\n\n");
-				var result = data.split("\n").slice(0, n).join("\n");
-				process.stdout.write("\n" + result);
-				arr++;
-				if(arr === files.length) done(result);
-			});
-		});
-
-	},
-	"tail": function (files, done) {
-		var n = 10;
-		var arr = 0;
-		files.forEach(function(filezzz, i) {
-			fs.readFile(filezzz, "utf8", function (err, data) {
-				if (err) {
-					throw err;
-				}
-				files.length > 1 && process.stdout.write("\n\n==> " + files[i] + " <==\n\n");
-				var result = data.split("\n").slice(0 - n).join("\n");
-				process.stdout.write("\n" + result);
-				arr++;
-				if(arr === files.length) done(result);
-			});
-		});
-
-	},
-	"sort": function (files, done) {
-		var arr = 0;
-		files.forEach(function(filezzz, i) {
-			fs.readFile(filezzz, "utf8", function (err, data) {
-				if (err) {
-					throw err;
-				}
-				files.length > 1 && process.stdout.write("\n\n==> " + files[i] + " <==\n\n");
-				var result = data.split("\n").sort();
-				process.stdout.write("" + result.join("\n"));
-				arr++;
-				if(arr === files.length) done(result);
-			});
-		});
-
-	},
-	"wc": function(files, done) {
-		var arr = 0;
-		files.forEach(function(filezzz, i) {
-			fs.readFile(filezzz, "utf8", function (err, data) {
-				if (err) {
-					throw err;
-				}
-				files.length > 1 && process.stdout.write("\n\n==> " + files[i] + " <==\n\n");
-				var result = (data.split("\n").length - 1);
-				process.stdout.write("" + result);
-				arr++;
-				arr === files.length && done(result);
-			});
-		});
-
-	},
-	"uniq": function(files, done) {
-		var arr = 0;
-		files.forEach(function(filezzz, i) {
-			fs.readFile(filezzz, "utf8", function (err, data) {
-				if (err) {
-					throw err;
-				}
-				files.length > 1 && process.stdout.write("\n\n==> " + files[i] + " <==\n\n");
-				var final = [];
-				var j = 0, newData = data.split("\n"),
-				    length = newData.length - 1;
-				for(; j <= length; j++) {
-					if(newData[j - 1] !== newData[j]) {
-						final.push(newData[j]);
-					}
-				}
-				var result = final.join("\n");
-				process.stdout.write("" + result);
-				arr++;
-				arr === files.length && done(result);
-			});
-		});
-
-	},
+	"echo": echo,
+	"cat": cat,
+	"head": head,
+	"tail": tail,
+	"sort": sort,
+	"wc": wc,
+	"uniq": uniq,
 	"curl": function(files, done) {
 		request.get({url: "http://" + files[0]}, function (error, response, body) {
 		  if (!error && response.statusCode == 200) {
@@ -170,8 +115,4 @@ var actions = {
 	"|": function (files, done) {
 
 	}
-
 };
-
-
-module.exports = actions;
